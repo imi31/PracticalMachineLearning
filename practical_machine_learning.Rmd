@@ -1,0 +1,42 @@
+---
+title: "Practical Machine Learning"
+author: "Michael Imhof"
+date: "Saturday, February 21, 2015"
+output: html_document
+---
+
+First, I had to load the files by using the following commands.
+```{r}
+training = read.csv("pml-training.csv")
+validation = read.csv("pml-testing.csv")
+```
+Then, I loaded the caret package to be able to build the model later and set the seed in order to get reproducable results.
+```{r}
+library(caret)
+set.seed(20)
+```
+Before beginning to work with the data, I looked at the data in the preview mode and identified the columns with empty or NA values as the cannot contribute to a reasonable predictor as they do not contain any valuable information. So, I ended up with a reduced training set.
+```{r}
+redTraining = training[,c(7:11,37:49,60:68,84:86,102,113:124,140,151:160)]
+```
+To build a realistic model and to be able to calculate an out of sample error based on data that was not used to fit the model later, I used cross validation and splitted the original training set up into a training and a test set. 80 percent of the original training set formed the training set to build the model and 20 percent the test set to evaluate the quality of the model and calculate the out of sample error later based on new data. K-fold cross validation could help in a real example to further optimize the performance of the model.
+```{r}
+inTrain = createDataPartition(redTraining$classe, p=0.8, list=FALSE)
+
+modelTrainingSet = redTraining[inTrain,]
+modelTestSet = redTraining[-inTrain,]
+```
+To build the model, I then used the train function from the caret package by using all variables of the reduced set to predict 'classe'. As I still use every non-empty column of the originial dataset, the model could perform badly on new data due to overfitting.
+```{r}
+modelFit = train(classe ~ ., data=modelTrainingSet)
+```
+After that, I used the test set to predict 'classe' on a completely new set of data that was not used to build the model and calculate the accuracy based on the outcome compared to the actual values contained in the test set.
+```{r}
+confusionMatrix(modelTestSet$class,predict(modelFit, modelTestSet))
+```
+It is important to mention that the out-of-sample error is measured by using the test set and will therefore always be higher than the in-sample error which is measured by using the training set which was already used to build the model. As the accurycy is 0.9982, the out-of-sample error, calculated as 1-accuracy, is 0.0018
+
+To finally solve the assignment, I predicted 'classe' on the 20 new observations in the validation set (pml-testing.csv).
+```{r}
+print(predict(modelFit, newdata=validation[,c(7:11,37:49,60:68,84:86,102,113:124,140,151:160)]))
+```
